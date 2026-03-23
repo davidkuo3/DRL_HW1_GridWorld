@@ -190,8 +190,8 @@
 </head>
 <body>
 
-    <h1>🌐 GridWorld HW1-2</h1>
-    <p style="opacity:0.7; margin-bottom: 2rem;">RL Strategy & Value Evaluation</p>
+    <h1>🌐 GridWorld HW1-2 & HW1-3</h1>
+    <p style="opacity:0.7; margin-bottom: 2rem;">Policy Evaluation & Value Iteration</p>
 
     <div class="container">
         <div class="grid-panel">
@@ -202,6 +202,14 @@
             <div class="select-group">
                 <label>Grid Size (n)</label>
                 <input type="number" id="grid-n" min="5" max="9" value="5">
+            </div>
+
+            <div class="select-group">
+                <label>Algorithm</label>
+                <select id="algo-select">
+                    <option value="policy_evaluation">HW1-2: Policy Evaluation (Random)</option>
+                    <option value="value_iteration">HW1-3: Value Iteration (Optimal)</option>
+                </select>
             </div>
 
             <div class="btn-group">
@@ -217,7 +225,7 @@
                 Walls: 0/3
             </div>
 
-            <button class="btn btn-compute" id="compute-btn" onclick="compute()" disabled>🚀 Evaluate Strategy</button>
+            <button class="btn btn-compute" id="compute-btn" onclick="compute()" disabled>🚀 Run Algorithm</button>
             
             <button class="btn" style="border-color: #e74c3c; color: #e74c3c;" onclick="resetGrid()">🔄 Reset</button>
 
@@ -238,6 +246,7 @@
         
         const container = document.getElementById('grid-container');
         const nInput = document.getElementById('grid-n');
+        const algoSelect = document.getElementById('algo-select');
         const statusText = document.getElementById('status-text');
         const computeBtn = document.getElementById('compute-btn');
 
@@ -245,9 +254,12 @@
             n = parseInt(nInput.value);
             container.style.gridTemplateColumns = `repeat(${n}, 70px)`;
             container.innerHTML = '';
-            startPos = null;
-            endPos = null;
-            walls = [];
+            
+            // Keep walls if they are within new bounds
+            walls = walls.filter(w => w.r < n && w.c < n);
+            if (startPos && (startPos.r >= n || startPos.c >= n)) startPos = null;
+            if (endPos && (endPos.r >= n || endPos.c >= n)) endPos = null;
+
             updateUI();
 
             for (let r = 0; r < n; r++) {
@@ -257,6 +269,20 @@
                     cell.id = `cell-${r}-${c}`;
                     cell.onclick = () => handleCellClick(r, c);
                     cell.innerText = `(${r},${c})`;
+                    
+                    if (startPos && startPos.r === r && startPos.c === c) {
+                        cell.classList.add('start');
+                        cell.innerHTML = 'START';
+                    }
+                    if (endPos && endPos.r === r && endPos.c === c) {
+                        cell.classList.add('end');
+                        cell.innerHTML = 'END';
+                    }
+                    if (walls.some(w => w.r === r && w.c === c)) {
+                        cell.classList.add('wall');
+                        cell.innerHTML = 'WALL';
+                    }
+                    
                     container.appendChild(cell);
                 }
             }
@@ -269,9 +295,7 @@
         }
 
         function handleCellClick(r, c) {
-            const cell = document.getElementById(`cell-${r}-${c}`);
-            
-            // Remove previous markers
+            // Remove previous markers if any
             if (startPos && startPos.r === r && startPos.c === c) startPos = null;
             if (endPos && endPos.r === r && endPos.c === c) endPos = null;
             walls = walls.filter(w => w.r !== r || w.c !== c);
@@ -320,12 +344,13 @@
                 End: ${endPos ? `(${endPos.r}, ${endPos.c})` : 'Not Set'} <br>
                 Walls: ${walls.length}/${maxWalls}
             `;
-            
-            // Now allows evaluation even with 0 walls (as long as Start and End are set)
             computeBtn.disabled = !(startPos && endPos);
         }
 
         function resetGrid() {
+            startPos = null;
+            endPos = null;
+            walls = [];
             initGrid();
         }
 
@@ -334,16 +359,28 @@
                 n: n,
                 start: [startPos.r, startPos.c],
                 end: [endPos.r, endPos.c],
-                obstacles: walls.map(w => [w.r, w.c])
+                obstacles: walls.map(w => [w.r, w.c]),
+                algorithm: algoSelect.value
             };
 
-            const response = await fetch('/compute', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
-            displayResults(data);
+            computeBtn.innerText = "⏳ Computing...";
+            computeBtn.disabled = true;
+
+            try {
+                const response = await fetch('/compute', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                displayResults(data);
+            } catch (error) {
+                console.error("Error computing:", error);
+                alert("Failed to compute. Check console.");
+            } finally {
+                computeBtn.innerText = "🚀 Run Algorithm";
+                computeBtn.disabled = false;
+            }
         }
 
         function displayResults(data) {
@@ -352,8 +389,6 @@
                 for (let c = 0; c < n; c++) {
                     const cell = document.getElementById(`cell-${r}-${c}`);
                     
-                    // Skip if it is end/wall (Terminal states or blocked)
-                    // The start node (Green) will now display its strategy arrow and value
                     if (cell.classList.contains('end') || cell.classList.contains('wall')) {
                         continue;
                     }

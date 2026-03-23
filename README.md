@@ -1,13 +1,15 @@
-# 🌐 GridWorld RL Strategy Evaluation (HW1)
+# 🌐 GridWorld RL Strategy & Value Iteration (HW1)
 
 [![Flask](https://img.shields.io/badge/Flask-3.0.0-blue.svg)](https://flask.palletsprojects.com/)
 [![Numpy](https://img.shields.io/badge/Numpy-1.26.4-green.svg)](https://numpy.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 📝 專案簡介 / Overview
-本專案為深度強化學習（DRL）作業一的實作方案。開發了一個互動式的 **$n \times n$ 網格地圖 (GridWorld)**，旨在展示基本的策略評估（Policy Evaluation）算法。
+本專案為深度強化學習（DRL）作業一的完整實作。開發了一個互動式的 **$n \times n$ 網格地圖 (GridWorld)**，旨在展示兩大強化學習核心算法：
+1.  **策略評估 (Policy Evaluation)**：評估隨機策略下的狀態價值。
+2.  **價值迭代 (Value Iteration)**：推導並尋找網格世界中的最佳政策 (Optimal Policy)。
 
-用戶可以自由設計地圖（起點、終點、障礙物），系統則會隨機生成一組策略（Policy），並透過 Bellman 方程計算出每個格子的狀態價值 $V(s)$。
+用戶可以自由設計地圖（起點、終點、障礙物），並選擇不同的算法來觀察價值函數 $V(s)$ 與行動政策（箭頭方向）的動態變化。
 
 ---
 
@@ -18,15 +20,17 @@
 *   **狀態設定**：
     *   **🟢 起點 (Start)**：指定綠色格。
     *   **🔴 終點 (End)**：指定紅色格。
-    *   **⚪ 障礙物 (Wall)**：指定灰色格（不可通行），上限為 $n-2$ 個，但也支援 0 牆壁評估。
+    *   **⚪ 障礙物 (Wall)**：指定灰色格（不可通行），上限為 $n-2$ 個。
 
 ### 2. 策略顯示與價值評估 (HW1-2)
-*   **策略生成**：為所有可行動格子（包含起點）隨機生成行動方向（↑, ↓, ←, →）。
-*   **價值計算**：
-    *   使用 **Policy Evaluation** 推導 $V(s)$。
-    *   **獎勵機制**：每步 Reward = -1，終點為吸收狀態（Value=0）。
-    *   **邊界處理**：碰撞牆壁或邊界會停留在原處。
-*   **視覺呈現**：格子內同時顯示**箭頭（策略）**與**數字（價值）**。
+*   **功能**：評估一組隨機生成的行動方向（↑, ↓, ←, →）。
+*   **價值計算**：使用 **Policy Evaluation** 公式迭代直至收斂。
+*   **獎勵機制**：每步 Reward = -1，終點為吸收狀態（Value=0）。
+
+### 3. 最佳政策推導 (HW1-3)
+*   **功能**：使用 **Value Iteration** 算法自動計算每個狀態的最佳行動。
+*   **效果**：產生的箭頭政策將會始終朝向終點，並自動避開用戶設定的障礙物。
+*   **視覺化**：網格同步更新為最佳價值函數 $V^*(s)$ 與最佳行動箭頭。
 
 ---
 
@@ -52,18 +56,24 @@ python app.py
 ---
 
 ## 🛠 技術棧 / Tech Stack
-*   **Backend**: Python Flask (處理算法與 API)
+*   **Backend**: Python Flask (處理算法邏輯與 REST API)
 *   **Frontend**: Vanilla HTML/JavaScript (處理 UI 互動與 CSS 特效)
-*   **Computing**: Numpy (向量化計算)
-*   **Aesthetics**: 現代深色模式、毛玻璃效果 (Glassmorphism)
+*   **Computing**: Numpy (高效矩陣運算與算法實作)
+*   **Aesthetics**: 現代深色模式、毛玻璃效果 (Glassmorphism)、動態按鈕特效
 
 ---
 
 ## 📚 學術背景 / RL Context
-本專案實作之 Policy Evaluation 公式：
-$$V_{k+1}(s) = \sum_{a} \pi(a|s) \sum_{s', r} p(s', r | s, a) [r + \gamma V_k(s')]$$
-由於本案採用確定性隨機策略，公式簡化為：
-$$V(s) = R + \gamma V(s_{next})$$
+
+### Policy Evaluation (HW1-2)
+用於計算給定策略 $\pi$ 的價值函數：
+$$V_{\pi}(s) = \sum_{a} \pi(a|s) \sum_{s', r} p(s', r | s, a) [r + \gamma V_{\pi}(s')] \approx R + \gamma V_{\pi}(s_{next})$$
+
+### Value Iteration (HW1-3)
+用於直接搜尋最佳價值函數：
+$$V_{k+1}(s) = \max_{a} \sum_{s', r} p(s', r | s, a) [r + \gamma V_k(s')] = \max_{a} [R + \gamma V_k(s_{next})]$$
+最佳政策推導：
+$$\pi^*(s) = \arg\max_{a} \sum_{s', r} p(s', r | s, a) [r + \gamma V^*(s')]$$
 
 ---
 
